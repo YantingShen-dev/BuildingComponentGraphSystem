@@ -3340,7 +3340,8 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
       // 创建最终的JSON数据对象
       const jsonData = {
         node_data: nodeData,
-        adj_matrix: adjMatrix
+        adj_matrix: adjMatrix,
+        explain: true  // 启用可解释性分析
       };
 
       // 发送POST请求到本地端口5000

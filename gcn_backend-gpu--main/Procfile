@@ -1,0 +1,9 @@
+# Railway 部署配置
+# 使用 start_apis.py 启动两个服务（注意：只有主服务端口可被外部访问）
+web: python start_apis.py
+
+# 如果只需要预测服务，可以使用：
+# web: python combined_api.py
+
+# 如果只需要优化服务，可以使用：
+# web: python optimization_api.py

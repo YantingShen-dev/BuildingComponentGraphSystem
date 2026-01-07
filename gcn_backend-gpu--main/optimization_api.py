@@ -661,7 +661,7 @@ def optimize():
         
         # 检查必要字段
         if not all(key in data for key in ['node_data', 'adj_matrix', 'wall_type']):
-            return jsonify({'error': 'Missing required fields: node_data, adj_matrix, and wall_type'}), 400
+            return jsonify({'success': False, 'error': 'Missing required fields: node_data, adj_matrix, and wall_type'}), 400
             
         # 获取数据
         node_data = data['node_data']
@@ -674,10 +674,10 @@ def optimize():
         
         # 验证参数范围
         if population_size < 10 or population_size > 200:
-            return jsonify({'error': 'population_size must be between 10 and 200'}), 400
+            return jsonify({'success': False, 'error': 'population_size must be between 10 and 200'}), 400
             
         if generations < 5 or generations > 100:
-            return jsonify({'error': 'generations must be between 5 and 100'}), 400
+            return jsonify({'success': False, 'error': 'generations must be between 5 and 100'}), 400
         
         # 设置模型路径
         MODEL_PATH = "model/energy_merged_EUIGCN9.pth"

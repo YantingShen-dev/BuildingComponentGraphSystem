@@ -1129,8 +1129,16 @@ const startOptimization = async () => {
     const optResponse = await sendJsonToLocalServer();
     console.log('优化请求响应:', optResponse);
 
+    // 检查请求是否成功
+    if (!optResponse.success) {
+      // 显示错误信息
+      alert(optResponse.message || '优化请求失败，请检查后端服务是否正常运行');
+      console.error('优化失败:', optResponse.message);
+      return;
+    }
+
     // 如果优化成功，更新pareto_solutions数据
-    if (optResponse.success && optResponse.data && optResponse.data.pareto_solutions) {
+    if (optResponse.data && optResponse.data.pareto_solutions) {
       paretoSolutions.value = optResponse.data.pareto_solutions;
       console.log('更新Pareto优化方案数据:', paretoSolutions.value.length, '个方案');
 
@@ -1138,11 +1146,20 @@ const startOptimization = async () => {
       paretoSolutions.value.forEach((solution, index) => {
         console.log(`方案${index}: 价格=${solution.cost.toFixed(2)}, 能耗=${solution.energy.toFixed(2)}`);
       });
+      
+      // 显示成功信息
+      if (paretoSolutions.value.length > 0) {
+        console.log(`优化完成！找到 ${paretoSolutions.value.length} 个帕累托最优解`);
+      }
     } else {
-      console.warn('优化响应中没有pareto_solutions数据');
+      const errorMsg = optResponse.data?.error || '优化响应中没有pareto_solutions数据';
+      console.warn(errorMsg);
+      alert(errorMsg);
     }
-  } catch (error) {
+  } catch (error: any) {
+    const errorMessage = error.message || '优化请求失败，请检查网络连接和后端服务';
     console.error('优化请求失败:', error);
+    alert(errorMessage);
   } finally {
     // 无论成功还是失败，都要清除加载状态
     isLoading.value = false;
@@ -4330,24 +4347,56 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
         },
         body: JSON.stringify(jsonData)
       })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+      .then(async response => {
+        // 尝试解析响应，即使状态码不是200
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          // 如果无法解析JSON，返回文本错误
+          const text = await response.text();
+          throw new Error(`服务器错误 (${response.status}): ${text || response.statusText}`);
         }
-        return response.json();
+        
+        // 如果HTTP状态码不是200-299，或者后端返回success=false，抛出错误
+        if (!response.ok) {
+          const errorMsg = data.error || data.message || `HTTP错误: ${response.status}`;
+          throw new Error(errorMsg);
+        }
+        
+        return data;
       })
       .then(data => {
         console.log('JSON数据成功发送到本地服务器:', data);
-        // 保存完整的响应数据
-        resolve({
-          success: true,
-          message: data.message || "数据接收成功",
-          data: data
-        });
+        // 检查后端返回的success字段
+        if (data.success === false) {
+          // 如果后端返回错误，传递错误信息
+          resolve({
+            success: false,
+            message: data.error || "优化失败",
+            data: data
+          });
+        } else {
+          // 保存完整的响应数据
+          resolve({
+            success: true,
+            message: data.message || "数据接收成功",
+            data: data
+          });
+        }
       })
       .catch(error => {
         console.error('发送JSON数据到本地服务器失败:', error);
-        resolve({ success: false, message: error.message });
+        const API_URL_OPT = import.meta.env.VITE_API_URL_OPT || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        
+        let errorMessage = error.message || '未知错误';
+        
+        // 针对 "Failed to fetch" 错误提供更详细的说明
+        if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+          errorMessage = `无法连接到优化服务 (${API_URL_OPT})\n\n可能的原因：\n1. 优化API服务未启动\n2. 服务运行在不同的端口\n3. 网络连接问题\n\n解决方法：\n1. 进入后端目录: cd gcn_backend-gpu--main\n2. 运行优化服务: python optimization_api.py\n3. 或者运行: python start_apis.py (同时启动两个服务)\n4. 确保服务运行在端口 5001`;
+        }
+        
+        resolve({ success: false, message: errorMessage });
       });
 
     } catch (error: any) {
