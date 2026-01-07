@@ -5,7 +5,6 @@ import os
 import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
 
 from GCN9 import GCN
 from GraphDataConstruct import construct_graph_data
@@ -627,72 +626,6 @@ def predict():
                     completed_requests[request_id] = time.time()
                     print(f"[PREDICT] 完成 explain 请求 (hash: {request_id[:8]}...), 总耗时: {elapsed:.2f} 秒")
                     print(f"[PREDICT] 请求记录已移至已完成列表，将保留 {COMPLETED_REQUEST_RETENTION} 秒以避免重复处理")
-
-@app.route('/optimize', methods=['OPTIONS', 'POST'])
-def proxy_optimize():
-    """
-    代理优化请求到优化服务
-    如果设置了 OPTIMIZATION_API_URL 环境变量，则转发到该服务
-    否则返回错误提示
-    """
-    # 处理 OPTIONS 预检请求
-    if request.method == 'OPTIONS':
-        response = jsonify({})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        return response
-    
-    # 获取优化服务的 URL（从环境变量或使用默认值）
-    optimization_url = os.environ.get('OPTIMIZATION_API_URL', 'http://localhost:5001')
-    
-    if optimization_url == 'http://localhost:5001':
-        # 如果使用默认值，说明没有配置优化服务 URL
-        return jsonify({
-            'success': False,
-            'error': '优化服务未配置。请设置 OPTIMIZATION_API_URL 环境变量，或在 Vercel 中配置 VITE_API_URL_OPT 指向优化服务。'
-        }), 503
-    
-    try:
-        # 获取原始请求数据
-        data = request.get_json()
-        
-        # 转发请求到优化服务
-        opt_service_url = f"{optimization_url}/optimize"
-        print(f"[PROXY] 转发优化请求到: {opt_service_url}")
-        
-        response = requests.post(
-            opt_service_url,
-            json=data,
-            timeout=600,  # 10分钟超时
-            headers={
-                'Content-Type': 'application/json',
-                'Origin': request.headers.get('Origin', '*')
-            }
-        )
-        
-        # 返回优化服务的响应
-        return jsonify(response.json()), response.status_code
-        
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'success': False,
-            'error': f'无法连接到优化服务: {optimization_url}。请确保优化服务正在运行。'
-        }), 503
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'success': False,
-            'error': '优化请求超时。优化过程可能需要较长时间。'
-        }), 504
-    except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        print(f"[PROXY] 代理优化请求失败: {str(e)}")
-        print(f"[PROXY] Traceback: {error_trace}")
-        return jsonify({
-            'success': False,
-            'error': f'代理请求失败: {str(e)}'
-        }), 500
 
 @app.route('/health', methods=['GET'])
 def health():
