@@ -520,15 +520,8 @@ def predict():
                 # 如果解释失败，仍然返回预测结果，但添加解释错误信息
                 result['explanation_error'] = str(e)
         
-            return jsonify(result)
-        finally:
-            # 清理请求记录
-            if request_id and need_explain:
-                with processing_lock:
-                    if request_id in processing_requests:
-                        elapsed = time.time() - processing_requests[request_id]
-                        del processing_requests[request_id]
-                        print(f"[PREDICT] 完成 explain 请求 (hash: {request_id[:8]}...), 总耗时: {elapsed:.2f} 秒")
+        # 返回结果（无论是否需要解释）
+        return jsonify(result)
         
     except Exception as e:
         import traceback
@@ -536,15 +529,16 @@ def predict():
         print(f"Error in predict endpoint: {str(e)}")
         print(f"Traceback: {error_trace}")
         
-        # 清理请求记录（即使出错也要清理）
+        # 在生产环境中，只返回错误信息，不返回完整的 traceback
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # 清理请求记录（无论成功还是失败都要清理）
         if request_id and need_explain:
             with processing_lock:
                 if request_id in processing_requests:
+                    elapsed = time.time() - processing_requests[request_id]
                     del processing_requests[request_id]
-                    print(f"[PREDICT] 清理失败的 explain 请求 (hash: {request_id[:8]}...)")
-        
-        # 在生产环境中，只返回错误信息，不返回完整的 traceback
-        return jsonify({'error': str(e)}), 500
+                    print(f"[PREDICT] 完成 explain 请求 (hash: {request_id[:8]}...), 总耗时: {elapsed:.2f} 秒")
 
 @app.route('/health', methods=['GET'])
 def health():
