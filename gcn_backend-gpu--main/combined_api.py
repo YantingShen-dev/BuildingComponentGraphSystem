@@ -68,7 +68,7 @@ def read_data_from_dir(data_dir):
     return node_data, adj_matrix, energy_path
 
 class GCNExplainer:
-    def __init__(self, model_path, node_data, adj_matrix, energy_data, explainer_epochs=20):
+    def __init__(self, model_path, node_data, adj_matrix, energy_data, explainer_epochs=5):
         """
         初始化GCN解释器
         
@@ -77,7 +77,7 @@ class GCNExplainer:
             node_data: 节点数据
             adj_matrix: 邻接矩阵
             energy_data: 能量数据路径
-            explainer_epochs: GNNExplainer的训练轮数，默认50（减少以提高速度）
+            explainer_epochs: GNNExplainer的训练轮数，默认5（减少以提高速度）
         """
         self.device = torch.device('cpu')
         self.explainer_epochs = explainer_epochs
@@ -519,8 +519,8 @@ def predict():
                 print(f"[PREDICT] 创建解释器，energy_path: {energy_path_for_explainer}")
                 print(f"[PREDICT] 节点数据: {len(node_data)} 行, 邻接矩阵: {len(adj_matrix)}x{len(adj_matrix[0]) if adj_matrix else 0}")
                 
-                # 从请求中获取explainer_epochs，如果没有则使用默认值20（优化速度）
-                explainer_epochs = data.get('explainer_epochs', 20)
+                # 从请求中获取explainer_epochs，如果没有则使用默认值5（优化速度）
+                explainer_epochs = data.get('explainer_epochs', 5)
                 print(f"[PREDICT] 使用 GNNExplainer epochs: {explainer_epochs}")
                 
                 # 创建解释器实例（需要文件路径，不是列表）
