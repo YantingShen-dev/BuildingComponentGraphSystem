@@ -12,7 +12,26 @@ from torch_geometric.explain import GNNExplainer, Explainer
 from torch_geometric.loader import DataLoader
 
 app = Flask(__name__)
-CORS(app)
+# 允许所有来源（生产环境可以限制为特定域名）
+CORS(app, 
+     resources={
+         r"/*": {
+             "origins": "*",
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"]
+         }
+     },
+     supports_credentials=True)
+
+# 处理 OPTIONS 预检请求
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        return response
 
 def read_data_from_dir(data_dir):
     """
