@@ -260,19 +260,23 @@ def predict():
         node_data = data['node_data']
         adj_matrix = data['adj_matrix']
         energy_data = data.get('energy_data')  # 使用get方法获取可选参数
-        need_explain = data.get('explain', True)  # 默认不需要解释
+        need_explain = data.get('explain', True)  # 默认需要解释
         
         # 设置模型路径
         MODEL_PATH = "model/energy_merged_EUIGCN9.pth"
         
+        # 保存 energy_path 用于解释器（解释器需要文件路径）
+        energy_path_for_explainer = None
+        
         # 如果需要能源数据但未提供
-        # 在 combined_api.py 第269-278行，修改为：
         if energy_data is None:
             # 使用默认数据文件夹中的能源数据
             try:
                 data_dir = os.path.join("input", "0")
                 _, _, energy_path = read_data_from_dir(data_dir)
-                # 读取文件内容而不是传递路径
+                # 保存路径用于解释器
+                energy_path_for_explainer = energy_path
+                # 读取文件内容用于预测（construct_graph_data 需要列表）
                 if os.path.exists(energy_path):
                     energy_data = pd.read_excel(energy_path, header=None).values.tolist()
                 else:
@@ -281,6 +285,12 @@ def predict():
             except Exception as e:
                 print(f"Warning: Could not load default energy data: {str(e)}")
                 energy_data = None
+                # 即使读取失败，也尝试使用默认路径
+                try:
+                    data_dir = os.path.join("input", "0")
+                    energy_path_for_explainer = os.path.join(data_dir, 'energy_sum.xlsx')
+                except:
+                    pass
         
         # 进行预测
         prediction, error = predict_single_sample(MODEL_PATH, node_data, adj_matrix, energy_data)
@@ -303,11 +313,27 @@ def predict():
                     'NoDirection', 'East', 'South', 'West', 'North'
                 ]
                 
-                # 创建解释器实例
-                explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_data)
+                # 确定用于解释器的 energy_path
+                # 如果 energy_path_for_explainer 未设置，尝试使用默认路径
+                if energy_path_for_explainer is None:
+                    try:
+                        data_dir = os.path.join("input", "0")
+                        energy_path_for_explainer = os.path.join(data_dir, 'energy_sum.xlsx')
+                        if not os.path.exists(energy_path_for_explainer):
+                            raise FileNotFoundError(f"Energy file not found: {energy_path_for_explainer}")
+                    except Exception as e:
+                        print(f"Warning: Could not determine energy path for explainer: {str(e)}")
+                        raise Exception(f"Cannot create explainer: energy file path not available. {str(e)}")
+                
+                print(f"Creating explainer with energy_path: {energy_path_for_explainer}")
+                
+                # 创建解释器实例（需要文件路径，不是列表）
+                explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_path_for_explainer)
                 
                 # 获取解释结果
+                print("Starting explanation process...")
                 node_importance, edge_matrix, _ = explainer.explain_and_save(feature_names=feature_names)
+                print("Explanation completed successfully")
                 
                 # 添加到结果中
                 result['explanation'] = {
@@ -315,6 +341,10 @@ def predict():
                     'edge_matrix': edge_matrix.tolist()
                 }
             except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error in explanation: {str(e)}")
+                print(f"Traceback: {error_trace}")
                 # 如果解释失败，仍然返回预测结果，但添加解释错误信息
                 result['explanation_error'] = str(e)
         
