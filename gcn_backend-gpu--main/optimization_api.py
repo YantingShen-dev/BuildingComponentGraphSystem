@@ -628,7 +628,30 @@ import json
 import threading
 
 app = Flask(__name__)
-CORS(app)
+
+# 配置 CORS - 允许所有来源
+CORS(app, 
+     origins="*",
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"],
+     supports_credentials=False)
+
+# 确保所有响应都包含 CORS 头
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    return response
+
+# 处理 OPTIONS 预检请求
+@app.route('/optimize', methods=['OPTIONS'])
+def handle_options():
+    response = jsonify({})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    return response
 
 
 @app.route('/optimize', methods=['POST'])
@@ -803,6 +826,7 @@ def health():
     return jsonify({'status': 'healthy', 'service': 'NSGA-II Optimization API'})
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001)
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port)
     
 
