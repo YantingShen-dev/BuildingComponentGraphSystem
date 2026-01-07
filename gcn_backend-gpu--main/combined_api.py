@@ -152,23 +152,76 @@ class GCNExplainer:
         
         # 获取解释
         print(f"[EXPLAIN] 步骤3: 调用 GNNExplainer (epochs={self.explainer_epochs}, 这可能需要较长时间)...")
-        print(f"[EXPLAIN] 注意: GNNExplainer 正在训练中，请耐心等待...")
+        print(f"[EXPLAIN] ========================================")
+        print(f"[EXPLAIN] GNNExplainer 工作原理说明:")
+        print(f"[EXPLAIN] - GNNExplainer 通过优化节点掩码和边掩码来解释模型预测")
+        print(f"[EXPLAIN] - 每个 epoch 会:")
+        print(f"[EXPLAIN]   1. 前向传播: 使用当前掩码计算预测")
+        print(f"[EXPLAIN]   2. 计算损失: 比较掩码后的预测与原始预测")
+        print(f"[EXPLAIN]   3. 反向传播: 更新掩码参数以最小化损失")
+        print(f"[EXPLAIN] - 训练 {self.explainer_epochs} 个 epochs 以找到最佳解释掩码")
+        print(f"[EXPLAIN] - 计算复杂度: O(epochs × (nodes + edges) × features)")
+        print(f"[EXPLAIN]   估算: {self.explainer_epochs} × ({num_nodes} + {num_edges}) × {num_features} ≈ {self.explainer_epochs * (num_nodes + num_edges) * num_features} 次操作")
+        print(f"[EXPLAIN] ========================================")
+        print(f"[EXPLAIN] 开始训练，请耐心等待...")
         explainer_start = time.time()
         heartbeat_interval = 10.0  # 每10秒输出一次心跳
         
         # 使用线程来输出心跳（因为GNNExplainer是阻塞的）
         import threading
         import sys
+        import os
+        
+        # 尝试导入 psutil 用于系统资源监控
+        try:
+            import psutil
+            HAS_PSUTIL = True
+        except ImportError:
+            HAS_PSUTIL = False
+            print(f"[EXPLAIN] 警告: psutil 未安装，将无法显示系统资源信息")
         
         heartbeat_stop = threading.Event()
+        heartbeat_count = 0
         
         def heartbeat():
-            """定期输出心跳日志"""
+            """定期输出心跳日志，包含系统资源信息"""
+            nonlocal heartbeat_count
             while not heartbeat_stop.is_set():
                 if heartbeat_stop.wait(heartbeat_interval):
                     break  # 如果事件被设置，退出循环
+                heartbeat_count += 1
                 elapsed = time.time() - explainer_start
-                print(f"[EXPLAIN] GNNExplainer 仍在运行中... (已耗时: {elapsed:.1f} 秒)")
+                
+                # 估算剩余时间和当前epoch进度
+                remaining_str = ""
+                estimated_epoch = 1
+                if heartbeat_count > 0:
+                    # 基于已用时间估算总时间（假设线性关系）
+                    avg_time_per_heartbeat = elapsed / heartbeat_count
+                    # 粗略估算：每个epoch大约需要相同时间
+                    # 假设每10秒完成约1个epoch（这个估算可能不准确，但可以给用户一个参考）
+                    estimated_epoch_time = 10.0  # 假设每个epoch需要10秒
+                    estimated_total = estimated_epoch_time * self.explainer_epochs
+                    remaining = max(0, estimated_total - elapsed)
+                    remaining_str = f", 估算剩余: {remaining:.1f} 秒"
+                    
+                    # 估算当前epoch进度
+                    estimated_epoch = min(self.explainer_epochs, int(elapsed / estimated_epoch_time) + 1)
+                
+                print(f"[EXPLAIN] GNNExplainer 训练中... (已耗时: {elapsed:.1f} 秒{remaining_str})")
+                print(f"[EXPLAIN]   当前阶段: 优化节点和边掩码 (估算 epoch {estimated_epoch}/{self.explainer_epochs})")
+                
+                # 获取系统资源信息（如果可用）
+                if HAS_PSUTIL:
+                    try:
+                        process = psutil.Process(os.getpid())
+                        cpu_percent = process.cpu_percent(interval=0.1)
+                        memory_info = process.memory_info()
+                        memory_mb = memory_info.rss / 1024 / 1024
+                        print(f"[EXPLAIN]   系统资源: CPU={cpu_percent:.1f}%, 内存={memory_mb:.1f}MB")
+                    except Exception as e:
+                        pass  # 忽略资源获取错误
+                
                 sys.stdout.flush()  # 强制刷新输出
         
         heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
@@ -182,7 +235,24 @@ class GCNExplainer:
             )
             heartbeat_stop.set()  # 停止心跳
             explainer_time = time.time() - explainer_start
-            print(f"[EXPLAIN] GNNExplainer 完成！耗时: {explainer_time:.2f} 秒 ({explainer_time/60:.2f} 分钟)")
+            print(f"[EXPLAIN] ========================================")
+            print(f"[EXPLAIN] GNNExplainer 训练完成！")
+            print(f"[EXPLAIN] 总耗时: {explainer_time:.2f} 秒 ({explainer_time/60:.2f} 分钟)")
+            print(f"[EXPLAIN] 平均每个 epoch 耗时: {explainer_time/self.explainer_epochs:.2f} 秒")
+            
+            # 获取解释结果的基本信息
+            try:
+                node_mask_sum = explanation.node_mask.sum().item()
+                edge_mask_sum = explanation.edge_mask.sum().item()
+                node_mask_mean = explanation.node_mask.mean().item()
+                edge_mask_mean = explanation.edge_mask.mean().item()
+                print(f"[EXPLAIN] 解释结果统计:")
+                print(f"[EXPLAIN]   - 节点掩码: 总和={node_mask_sum:.4f}, 均值={node_mask_mean:.4f}")
+                print(f"[EXPLAIN]   - 边掩码: 总和={edge_mask_sum:.4f}, 均值={edge_mask_mean:.4f}")
+            except Exception as e:
+                print(f"[EXPLAIN] 无法获取解释结果统计: {str(e)}")
+            
+            print(f"[EXPLAIN] ========================================")
         except Exception as e:
             heartbeat_stop.set()  # 停止心跳
             import traceback
