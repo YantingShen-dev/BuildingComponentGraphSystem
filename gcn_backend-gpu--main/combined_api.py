@@ -29,9 +29,11 @@ from collections import defaultdict
 from hashlib import md5
 import json
 
-# 存储正在处理的请求
+# 存储正在处理的请求和最近完成的请求（用于去重）
 processing_requests = {}
+completed_requests = {}  # 存储最近完成的请求，避免短时间内重复处理
 processing_lock = threading.Lock()
+COMPLETED_REQUEST_RETENTION = 300  # 完成的请求保留5分钟，避免重复处理
 
 def get_request_hash(data):
     """生成请求的唯一哈希值"""
@@ -416,22 +418,47 @@ def predict():
             print("Error: Request body is empty or not valid JSON")
             return jsonify({'error': 'Request body is empty or not valid JSON'}), 400
         
-        # 检查是否是 explain 请求，如果是则检查是否已有相同请求在处理
+        # 检查是否是 explain 请求，如果是则检查是否已有相同请求在处理或最近完成
         need_explain = data.get('explain', False)
         if need_explain:
             request_hash = get_request_hash(data)
+            current_time = time.time()
+            
             with processing_lock:
+                # 清理过期的已完成请求记录
+                expired_hashes = [h for h, t in completed_requests.items() 
+                                 if current_time - t > COMPLETED_REQUEST_RETENTION]
+                for h in expired_hashes:
+                    del completed_requests[h]
+                
+                # 检查是否正在处理
                 if request_hash in processing_requests:
                     existing_start_time = processing_requests[request_hash]
-                    elapsed = time.time() - existing_start_time
+                    elapsed = current_time - existing_start_time
                     print(f"[PREDICT] 检测到重复的 explain 请求 (hash: {request_hash[:8]}...), 已有请求正在处理中 (已运行: {elapsed:.1f} 秒)")
                     return jsonify({
                         'error': '相同的解释请求正在处理中，请勿重复提交',
                         'request_hash': request_hash[:8],
-                        'processing_time': elapsed
+                        'processing_time': elapsed,
+                        'status': 'processing'
                     }), 429  # 429 Too Many Requests
+                
+                # 检查是否最近完成（5分钟内）
+                elif request_hash in completed_requests:
+                    completed_time = completed_requests[request_hash]
+                    elapsed_since_completion = current_time - completed_time
+                    print(f"[PREDICT] 检测到重复的 explain 请求 (hash: {request_hash[:8]}...), 该请求在 {elapsed_since_completion:.1f} 秒前已完成")
+                    return jsonify({
+                        'error': '相同的解释请求在最近已完成，请勿重复提交',
+                        'request_hash': request_hash[:8],
+                        'completed_time': elapsed_since_completion,
+                        'status': 'recently_completed',
+                        'message': f'该请求在 {int(elapsed_since_completion)} 秒前已完成，请等待至少 {COMPLETED_REQUEST_RETENTION} 秒后重试'
+                    }), 429  # 429 Too Many Requests
+                
+                # 新请求，开始处理
                 else:
-                    processing_requests[request_hash] = time.time()
+                    processing_requests[request_hash] = current_time
                     request_id = request_hash
                     print(f"[PREDICT] 开始处理新的 explain 请求 (hash: {request_id[:8]}...)")
         
@@ -557,6 +584,7 @@ def predict():
                     'node_importance': node_importance.to_dict(),
                     'edge_matrix': edge_matrix.tolist()
                 }
+                print(f"[PREDICT] 解释结果已添加到响应中")
             except Exception as e:
                 import traceback
                 error_trace = traceback.format_exc()
@@ -566,7 +594,18 @@ def predict():
                 result['explanation_error'] = str(e)
         
         # 返回结果（无论是否需要解释）
-        return jsonify(result)
+        try:
+            # 估算响应大小
+            result_str = json.dumps(result)
+            result_size_kb = len(result_str.encode('utf-8')) / 1024
+            print(f"[PREDICT] 准备返回响应，数据大小: {result_size_kb:.2f} KB")
+            print(f"[PREDICT] 响应包含: prediction={('prediction' in result)}, explanation={('explanation' in result)}")
+        except Exception as e:
+            print(f"[PREDICT] 无法估算响应大小: {str(e)}")
+        
+        response = jsonify(result)
+        print(f"[PREDICT] 响应已创建，准备发送给客户端...")
+        return response
         
     except Exception as e:
         import traceback
@@ -583,7 +622,10 @@ def predict():
                 if request_id in processing_requests:
                     elapsed = time.time() - processing_requests[request_id]
                     del processing_requests[request_id]
+                    # 将完成的请求添加到已完成列表，保留一段时间避免重复处理
+                    completed_requests[request_id] = time.time()
                     print(f"[PREDICT] 完成 explain 请求 (hash: {request_id[:8]}...), 总耗时: {elapsed:.2f} 秒")
+                    print(f"[PREDICT] 请求记录已移至已完成列表，将保留 {COMPLETED_REQUEST_RETENTION} 秒以避免重复处理")
 
 @app.route('/health', methods=['GET'])
 def health():
