@@ -360,7 +360,7 @@ You can adjust parameters in the explainer class:
 ```python
 # GNNExplainer training epochs
 self.explainer = Explainer(
-    algorithm=GNNExplainer(epochs=200),  # Adjustable epochs
+    algorithm=GNNExplainer(epochs=50),  # Adjustable epochs
     ...
 )
 
