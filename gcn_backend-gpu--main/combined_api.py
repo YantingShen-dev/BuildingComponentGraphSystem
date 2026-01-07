@@ -186,8 +186,12 @@ def predict_single_sample(model_path, node_data, adj_matrix, energy_data):
     # 构建单个样本的图数据
     try:
         graph_data = construct_graph_data(node_data, adj_matrix, energy_data, 'EUI', 0)
+        print(f"Successfully constructed graph data: {graph_data.num_nodes} nodes, {graph_data.num_node_features} features")
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"Error constructing graph data: {str(e)}")
+        print(f"Traceback: {error_trace}")
         return None, str(e)
 
     # 创建模型实例
@@ -195,9 +199,17 @@ def predict_single_sample(model_path, node_data, adj_matrix, energy_data):
 
     # 加载训练好的模型参数
     try:
+        if not os.path.exists(model_path):
+            error_msg = f"Model file not found: {model_path}"
+            print(error_msg)
+            return None, error_msg
         model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        print(f"Successfully loaded model from {model_path}")
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         print(f"Error loading model: {str(e)}")
+        print(f"Traceback: {error_trace}")
         return None, str(e)
 
     # 创建数据加载器
@@ -228,9 +240,21 @@ def predict():
         # 获取请求数据
         data = request.get_json()
         
+        if data is None:
+            print("Error: Request body is empty or not valid JSON")
+            return jsonify({'error': 'Request body is empty or not valid JSON'}), 400
+        
         # 检查必要字段
         if not all(key in data for key in ['node_data', 'adj_matrix']):
+            print(f"Error: Missing required fields. Received keys: {list(data.keys()) if data else 'None'}")
             return jsonify({'error': 'Missing required fields: node_data and adj_matrix'}), 400
+        
+        # 验证数据格式
+        if not isinstance(data['node_data'], list) or not isinstance(data['adj_matrix'], list):
+            print(f"Error: Invalid data types. node_data type: {type(data['node_data'])}, adj_matrix type: {type(data['adj_matrix'])}")
+            return jsonify({'error': 'node_data and adj_matrix must be lists'}), 400
+        
+        print(f"Received predict request: {len(data['node_data'])} nodes, {len(data['adj_matrix'])}x{len(data['adj_matrix'][0]) if data['adj_matrix'] else 0} adj matrix")
             
         # 获取数据
         node_data = data['node_data']
@@ -244,12 +268,17 @@ def predict():
         # 如果需要能源数据但未提供
         if energy_data is None:
             # 使用默认数据文件夹中的能源数据
-            data_dir = os.path.join("input", "0")
-            _, _, energy_path = read_data_from_dir(data_dir)
-            energy_data = energy_path
+            try:
+                data_dir = os.path.join("input", "0")
+                _, _, energy_path = read_data_from_dir(data_dir)
+                energy_data = energy_path
+            except Exception as e:
+                print(f"Warning: Could not load default energy data: {str(e)}")
+                # 如果无法加载默认数据，使用 None（construct_graph_data 可以处理）
+                energy_data = None
         
         # 进行预测
-        prediction, error = predict_single_sample(MODEL_PATH, node_data, adj_matrix, energy_data=None)
+        prediction, error = predict_single_sample(MODEL_PATH, node_data, adj_matrix, energy_data)
         
         if prediction is None:
             return jsonify({'error': f'Prediction failed: {error}'}), 500
@@ -287,8 +316,39 @@ def predict():
         return jsonify(result)
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"Error in predict endpoint: {str(e)}")
+        print(f"Traceback: {error_trace}")
+        # 在生产环境中，只返回错误信息，不返回完整的 traceback
         return jsonify({'error': str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health():
+    """健康检查端点"""
+    try:
+        # 检查模型文件是否存在
+        MODEL_PATH = "model/energy_merged_EUIGCN9.pth"
+        model_exists = os.path.exists(MODEL_PATH)
+        
+        # 检查输入数据目录
+        input_dir = os.path.join("input", "0")
+        input_exists = os.path.exists(input_dir)
+        
+        return jsonify({
+            'status': 'healthy',
+            'model_exists': model_exists,
+            'model_path': MODEL_PATH,
+            'input_dir_exists': input_exists,
+            'input_dir': input_dir
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
+    print(f"Starting server on port {port}")
     app.run(host='0.0.0.0', port=port) 
