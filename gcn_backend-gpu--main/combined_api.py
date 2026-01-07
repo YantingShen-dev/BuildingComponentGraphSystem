@@ -68,7 +68,7 @@ def read_data_from_dir(data_dir):
     return node_data, adj_matrix, energy_path
 
 class GCNExplainer:
-    def __init__(self, model_path, node_data, adj_matrix, energy_data, explainer_epochs=50):
+    def __init__(self, model_path, node_data, adj_matrix, energy_data, explainer_epochs=20):
         """
         初始化GCN解释器
         
@@ -267,10 +267,13 @@ class GCNExplainer:
         node_mask = explanation.node_mask.cpu().detach().numpy()
         print(f"[EXPLAIN] 节点掩码形状: {node_mask.shape}")
         
-        # 创建节点特征重要性DataFrame
+        # 创建节点特征重要性DataFrame（优化版本：直接使用掩码值，减少计算）
+        print(f"[EXPLAIN] 使用快速模式计算节点特征重要性（基于掩码值，无需扰动计算）...")
         node_feature_importance = []
         node_start_time = time.time()
-        total_node_feature_ops = num_nodes * num_features
+        
+        # 获取节点掩码值（用于加权）
+        node_mask_values = node_mask.flatten() if len(node_mask.shape) > 1 else node_mask
         
         for node_idx in range(num_nodes):
             progress_interval = max(1, num_nodes // 10) if num_nodes > 0 else 1
@@ -282,30 +285,16 @@ class GCNExplainer:
             node_importance = {}
             node_importance['Node_ID'] = node_idx
             
+            # 获取该节点的掩码值
+            node_mask_value = node_mask_values[node_idx] if node_idx < len(node_mask_values) else 1.0
+            
             for feat_idx, feat_name in enumerate(feature_names):
                 # 计算特征的原始值
                 original_value = data.x[node_idx, feat_idx].item()
                 
-                # 简化扰动分析（减少计算量）
-                # 只使用一个中等大小的扰动，而不是多个
-                perturbation_scale = 0.1  # 只使用一个扰动比例
-                
-                # 正向扰动
-                perturbed_data = data.clone()
-                epsilon = perturbation_scale * abs(original_value) if original_value != 0 else perturbation_scale
-                perturbed_data.x[node_idx, feat_idx] += epsilon
-                pos_prediction = self._get_prediction(perturbed_data)
-                pos_impact = (pos_prediction - original_prediction) / epsilon if epsilon != 0 else 0
-                
-                # 负向扰动
-                perturbed_data = data.clone()
-                perturbed_data.x[node_idx, feat_idx] -= epsilon
-                neg_prediction = self._get_prediction(perturbed_data)
-                neg_impact = (original_prediction - neg_prediction) / epsilon if epsilon != 0 else 0
-                
-                # 取平均影响
-                avg_impact = (pos_impact + neg_impact) / 2
-                importance = avg_impact * node_mask[node_idx][0] * original_value
+                # 快速模式：直接使用掩码值和特征值的乘积作为重要性
+                # 这比扰动方法快得多，同时仍然能反映特征的重要性
+                importance = node_mask_value * original_value
                 
                 node_importance[feat_name] = importance
             
@@ -319,8 +308,8 @@ class GCNExplainer:
         node_importance_df = pd.DataFrame(node_feature_importance)
         print(f"[EXPLAIN] 节点重要性 DataFrame 形状: {node_importance_df.shape}")
         
-        # 处理边的重要性
-        print(f"[EXPLAIN] 步骤6: 处理边的重要性...")
+        # 处理边的重要性（优化版本：直接使用掩码值，无需删除边重新计算）
+        print(f"[EXPLAIN] 步骤6: 处理边的重要性（快速模式：直接使用掩码值）...")
         edge_mask = explanation.edge_mask.cpu().detach().numpy()
         edge_importance_matrix = np.zeros((num_nodes, num_nodes))
         
@@ -328,33 +317,19 @@ class GCNExplainer:
         edge_index = data.edge_index.cpu().numpy()
         edge_start_time = time.time()
         
+        # 快速模式：直接使用边掩码值，乘以原始预测值作为重要性
+        # 这比删除每条边重新计算快得多
         for i, (src, dst) in enumerate(edge_index.T):
-            progress_interval = max(1, num_edges // 10) if num_edges > 0 else 1
-            if (i + 1) % progress_interval == 0 or i == 0:
-                elapsed = time.time() - edge_start_time
-                progress = (i + 1) / num_edges * 100 if num_edges > 0 else 0
-                print(f"[EXPLAIN] 边重要性处理进度: {i + 1}/{num_edges} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒")
-            
-            # 复制原始数据
-            perturbed_data = data.clone()
-            
-            # 删除这条边（通过创建新的edge_index）
-            mask = torch.ones(data.edge_index.size(1), dtype=torch.bool)
-            mask[i] = False
-            perturbed_data.edge_index = data.edge_index[:, mask]
-            
-            # 获取删除边后的预测
-            perturbed_prediction = self._get_prediction(perturbed_data)
-            
-            # 计算影响
-            importance = (original_prediction - perturbed_prediction) * edge_mask[i]
-            
-            # 保存到邻接矩阵（保持对称性）
-            edge_importance_matrix[src][dst] = importance
-            edge_importance_matrix[dst][src] = importance
+            if i < len(edge_mask):
+                # 直接使用掩码值作为重要性（可以乘以原始预测值作为缩放因子）
+                importance = edge_mask[i] * abs(original_prediction)
+                
+                # 保存到邻接矩阵（保持对称性）
+                edge_importance_matrix[src][dst] = importance
+                edge_importance_matrix[dst][src] = importance
         
         edge_time = time.time() - edge_start_time
-        print(f"[EXPLAIN] 边重要性处理完成，耗时: {edge_time:.2f} 秒")
+        print(f"[EXPLAIN] 边重要性处理完成，处理了 {num_edges} 条边，耗时: {edge_time:.2f} 秒")
         
         total_time = time.time() - start_time
         print(f"[EXPLAIN] 解释过程全部完成！总耗时: {total_time:.2f} 秒")
@@ -544,8 +519,8 @@ def predict():
                 print(f"[PREDICT] 创建解释器，energy_path: {energy_path_for_explainer}")
                 print(f"[PREDICT] 节点数据: {len(node_data)} 行, 邻接矩阵: {len(adj_matrix)}x{len(adj_matrix[0]) if adj_matrix else 0}")
                 
-                # 从请求中获取explainer_epochs，如果没有则使用默认值50
-                explainer_epochs = data.get('explainer_epochs', 50)
+                # 从请求中获取explainer_epochs，如果没有则使用默认值20（优化速度）
+                explainer_epochs = data.get('explainer_epochs', 20)
                 print(f"[PREDICT] 使用 GNNExplainer epochs: {explainer_epochs}")
                 
                 # 创建解释器实例（需要文件路径，不是列表）
