@@ -638,11 +638,17 @@ CORS(app,
      expose_headers=None,
      max_age=3600)
 
-# 显式处理 OPTIONS 预检请求
-@app.route('/optimize', methods=['OPTIONS'])
-def optimize_options():
+# 显式处理 OPTIONS 预检请求（确保在所有路由之前处理）
+@app.before_request
+def handle_preflight():
     """处理 OPTIONS 预检请求"""
-    return '', 200
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        response.headers.add("Access-Control-Max-Age", "3600")
+        return response
 
 @app.route('/optimize', methods=['POST'])
 def optimize():
