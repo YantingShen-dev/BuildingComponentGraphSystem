@@ -151,10 +151,12 @@ if __name__ == "__main__":
                 'bind': f'0.0.0.0:{port}',
                 'workers': 1,  # Railway 资源有限，使用单 worker
                 'worker_class': 'sync',
-                'timeout': 300,  # 5分钟超时，足够解释过程完成
+                'timeout': 600,  # 10分钟超时，确保 explain 过程有足够时间完成
+                'graceful_timeout': 30,  # 优雅关闭超时
                 'keepalive': 5,
                 'accesslog': '-',  # 输出到 stdout
                 'errorlog': '-',  # 输出到 stderr
+                'worker_tmp_dir': '/dev/shm',  # 使用内存文件系统提高性能（如果可用）
             }
             
             print("使用 Gunicorn 生产服务器启动...")

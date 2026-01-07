@@ -23,6 +23,27 @@ CORS(app,
      expose_headers=None,
      max_age=None)
 
+# 请求去重机制：防止重复的 explain 请求
+import threading
+from collections import defaultdict
+from hashlib import md5
+import json
+
+# 存储正在处理的请求
+processing_requests = {}
+processing_lock = threading.Lock()
+
+def get_request_hash(data):
+    """生成请求的唯一哈希值"""
+    # 只使用关键数据生成哈希，忽略时间戳等变化的数据
+    key_data = {
+        'node_data': data.get('node_data'),
+        'adj_matrix': data.get('adj_matrix'),
+        'explain': data.get('explain', False)
+    }
+    key_str = json.dumps(key_data, sort_keys=True)
+    return md5(key_str.encode()).hexdigest()
+
 def read_data_from_dir(data_dir):
     """
     从目录中读取node.xlsx, adjmatrix.xlsx和energy_sum.xlsx文件
@@ -340,6 +361,8 @@ def predict():
         "explain": true/false  # 是否需要解释（可选，默认为true）
     }
     """
+    request_id = None
+    need_explain = False
     try:
         # 获取请求数据
         data = request.get_json()
@@ -347,6 +370,25 @@ def predict():
         if data is None:
             print("Error: Request body is empty or not valid JSON")
             return jsonify({'error': 'Request body is empty or not valid JSON'}), 400
+        
+        # 检查是否是 explain 请求，如果是则检查是否已有相同请求在处理
+        need_explain = data.get('explain', False)
+        if need_explain:
+            request_hash = get_request_hash(data)
+            with processing_lock:
+                if request_hash in processing_requests:
+                    existing_start_time = processing_requests[request_hash]
+                    elapsed = time.time() - existing_start_time
+                    print(f"[PREDICT] 检测到重复的 explain 请求 (hash: {request_hash[:8]}...), 已有请求正在处理中 (已运行: {elapsed:.1f} 秒)")
+                    return jsonify({
+                        'error': '相同的解释请求正在处理中，请勿重复提交',
+                        'request_hash': request_hash[:8],
+                        'processing_time': elapsed
+                    }), 429  # 429 Too Many Requests
+                else:
+                    processing_requests[request_hash] = time.time()
+                    request_id = request_hash
+                    print(f"[PREDICT] 开始处理新的 explain 请求 (hash: {request_id[:8]}...)")
         
         # 检查必要字段
         if not all(key in data for key in ['node_data', 'adj_matrix']):
@@ -364,7 +406,7 @@ def predict():
         node_data = data['node_data']
         adj_matrix = data['adj_matrix']
         energy_data = data.get('energy_data')  # 使用get方法获取可选参数
-        need_explain = data.get('explain', False)  # 默认禁用解释（因为计算量大，容易超时）
+        # need_explain 已在上面定义，这里不需要重复定义
         
         # 设置模型路径
         MODEL_PATH = "model/energy_merged_EUIGCN9.pth"
@@ -478,13 +520,29 @@ def predict():
                 # 如果解释失败，仍然返回预测结果，但添加解释错误信息
                 result['explanation_error'] = str(e)
         
-        return jsonify(result)
+            return jsonify(result)
+        finally:
+            # 清理请求记录
+            if request_id and need_explain:
+                with processing_lock:
+                    if request_id in processing_requests:
+                        elapsed = time.time() - processing_requests[request_id]
+                        del processing_requests[request_id]
+                        print(f"[PREDICT] 完成 explain 请求 (hash: {request_id[:8]}...), 总耗时: {elapsed:.2f} 秒")
         
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
         print(f"Error in predict endpoint: {str(e)}")
         print(f"Traceback: {error_trace}")
+        
+        # 清理请求记录（即使出错也要清理）
+        if request_id and need_explain:
+            with processing_lock:
+                if request_id in processing_requests:
+                    del processing_requests[request_id]
+                    print(f"[PREDICT] 清理失败的 explain 请求 (hash: {request_id[:8]}...)")
+        
         # 在生产环境中，只返回错误信息，不返回完整的 traceback
         return jsonify({'error': str(e)}), 500
 
