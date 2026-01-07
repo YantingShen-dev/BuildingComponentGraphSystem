@@ -47,8 +47,19 @@ def read_data_from_dir(data_dir):
     return node_data, adj_matrix, energy_path
 
 class GCNExplainer:
-    def __init__(self, model_path, node_data, adj_matrix, energy_data):
+    def __init__(self, model_path, node_data, adj_matrix, energy_data, explainer_epochs=50):
+        """
+        初始化GCN解释器
+        
+        参数:
+            model_path: 模型路径
+            node_data: 节点数据
+            adj_matrix: 邻接矩阵
+            energy_data: 能量数据路径
+            explainer_epochs: GNNExplainer的训练轮数，默认50（减少以提高速度）
+        """
         self.device = torch.device('cpu')
+        self.explainer_epochs = explainer_epochs
         
         # 直接使用提供的数据
         energy_path = energy_data
@@ -73,12 +84,12 @@ class GCNExplainer:
         self.model.eval()
         print(f"[GCNExplainer.__init__] 模型设置为评估模式")
         
-        # 初始化GNNExplainer（减少epochs以提高性能）
-        print(f"[GCNExplainer.__init__] 初始化 GNNExplainer (epochs=200)...")
+        # 初始化GNNExplainer（使用可配置的epochs）
+        print(f"[GCNExplainer.__init__] 初始化 GNNExplainer (epochs={self.explainer_epochs})...")
         explainer_init_start = time.time()
         self.explainer = Explainer(
             model=self.model,
-            algorithm=GNNExplainer(epochs=200),  # 从200减少到50，提高速度
+            algorithm=GNNExplainer(epochs=self.explainer_epochs),
             explanation_type='model',
             edge_mask_type='object',
             node_mask_type='object',
@@ -119,20 +130,44 @@ class GCNExplainer:
         print(f"[EXPLAIN] 原始预测值: {original_prediction:.6f}")
         
         # 获取解释
-        print(f"[EXPLAIN] 步骤3: 调用 GNNExplainer (这可能需要较长时间，epochs=200)...")
+        print(f"[EXPLAIN] 步骤3: 调用 GNNExplainer (epochs={self.explainer_epochs}, 这可能需要较长时间)...")
+        print(f"[EXPLAIN] 注意: GNNExplainer 正在训练中，请耐心等待...")
         explainer_start = time.time()
+        heartbeat_interval = 10.0  # 每10秒输出一次心跳
+        
+        # 使用线程来输出心跳（因为GNNExplainer是阻塞的）
+        import threading
+        import sys
+        
+        heartbeat_stop = threading.Event()
+        
+        def heartbeat():
+            """定期输出心跳日志"""
+            while not heartbeat_stop.is_set():
+                if heartbeat_stop.wait(heartbeat_interval):
+                    break  # 如果事件被设置，退出循环
+                elapsed = time.time() - explainer_start
+                print(f"[EXPLAIN] GNNExplainer 仍在运行中... (已耗时: {elapsed:.1f} 秒)")
+                sys.stdout.flush()  # 强制刷新输出
+        
+        heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+        heartbeat_thread.start()
+        
         try:
             explanation = self.explainer(
                 x=data.x,
                 edge_index=data.edge_index,
                 batch=torch.zeros(data.x.size(0), dtype=torch.long, device=self.device)
             )
+            heartbeat_stop.set()  # 停止心跳
             explainer_time = time.time() - explainer_start
-            print(f"[EXPLAIN] GNNExplainer 完成，耗时: {explainer_time:.2f} 秒")
+            print(f"[EXPLAIN] GNNExplainer 完成！耗时: {explainer_time:.2f} 秒 ({explainer_time/60:.2f} 分钟)")
         except Exception as e:
+            heartbeat_stop.set()  # 停止心跳
             import traceback
             error_trace = traceback.format_exc()
-            print(f"[EXPLAIN] GNNExplainer 失败: {str(e)}")
+            explainer_time = time.time() - explainer_start
+            print(f"[EXPLAIN] GNNExplainer 失败 (已耗时: {explainer_time:.2f} 秒): {str(e)}")
             print(f"[EXPLAIN] Traceback: {error_trace}")
             raise
         
@@ -397,10 +432,14 @@ def predict():
                 print(f"[PREDICT] 创建解释器，energy_path: {energy_path_for_explainer}")
                 print(f"[PREDICT] 节点数据: {len(node_data)} 行, 邻接矩阵: {len(adj_matrix)}x{len(adj_matrix[0]) if adj_matrix else 0}")
                 
+                # 从请求中获取explainer_epochs，如果没有则使用默认值50
+                explainer_epochs = data.get('explainer_epochs', 50)
+                print(f"[PREDICT] 使用 GNNExplainer epochs: {explainer_epochs}")
+                
                 # 创建解释器实例（需要文件路径，不是列表）
                 explainer_start = time.time()
                 try:
-                    explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_path_for_explainer)
+                    explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_path_for_explainer, explainer_epochs=explainer_epochs)
                     explainer_init_time = time.time() - explainer_start
                     print(f"[PREDICT] 解释器创建成功，耗时: {explainer_init_time:.2f} 秒")
                 except Exception as e:
