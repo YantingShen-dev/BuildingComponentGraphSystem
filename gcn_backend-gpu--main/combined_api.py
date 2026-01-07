@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import pandas as pd
 import os
+import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -53,12 +54,28 @@ class GCNExplainer:
         energy_path = energy_data
         
         # 加载数据和模型
+        print(f"[GCNExplainer.__init__] 开始构建图数据...")
+        graph_data_start = time.time()
         self.graph_data = construct_graph_data_explain(node_data, adj_matrix, energy_path, 'Heating', 0)
+        graph_data_time = time.time() - graph_data_start
+        print(f"[GCNExplainer.__init__] 图数据构建完成，耗时: {graph_data_time:.2f} 秒")
+        print(f"[GCNExplainer.__init__] 图数据: {self.graph_data.num_nodes} 节点, {self.graph_data.num_edges} 边, {self.graph_data.num_node_features} 特征")
+        
+        print(f"[GCNExplainer.__init__] 创建模型实例...")
         self.model = GCN(self.graph_data.num_node_features).to(self.device)
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        
+        print(f"[GCNExplainer.__init__] 加载模型权重: {model_path}")
+        model_load_start = time.time()
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=False))
+        model_load_time = time.time() - model_load_start
+        print(f"[GCNExplainer.__init__] 模型权重加载完成，耗时: {model_load_time:.2f} 秒")
+        
         self.model.eval()
+        print(f"[GCNExplainer.__init__] 模型设置为评估模式")
         
         # 初始化GNNExplainer（减少epochs以提高性能）
+        print(f"[GCNExplainer.__init__] 初始化 GNNExplainer (epochs=200)...")
+        explainer_init_start = time.time()
         self.explainer = Explainer(
             model=self.model,
             algorithm=GNNExplainer(epochs=200),  # 从200减少到50，提高速度
@@ -71,6 +88,9 @@ class GCNExplainer:
                 return_type='raw'
             )
         )
+        explainer_init_time = time.time() - explainer_init_start
+        print(f"[GCNExplainer.__init__] GNNExplainer 初始化完成，耗时: {explainer_init_time:.2f} 秒")
+        print(f"[GCNExplainer.__init__] 解释器准备就绪")
 
     def _get_prediction(self, data):
         """获取单个预测值"""
@@ -83,25 +103,56 @@ class GCNExplainer:
 
     def explain_and_save(self, feature_names):
         """解释预测并返回结果"""
+        start_time = time.time()
+        print(f"[EXPLAIN] 开始解释过程，时间: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        
         # 获取数据
+        print(f"[EXPLAIN] 步骤1: 准备图数据...")
         data = self.graph_data.to(self.device)
+        num_nodes = data.x.size(0)
+        num_edges = data.edge_index.size(1)
+        num_features = len(feature_names)
+        print(f"[EXPLAIN] 图数据信息: {num_nodes} 个节点, {num_edges} 条边, {num_features} 个特征")
+        
+        print(f"[EXPLAIN] 步骤2: 计算原始预测值...")
         original_prediction = self._get_prediction(data)
+        print(f"[EXPLAIN] 原始预测值: {original_prediction:.6f}")
         
         # 获取解释
-        explanation = self.explainer(
-            x=data.x,
-            edge_index=data.edge_index,
-            batch=torch.zeros(data.x.size(0), dtype=torch.long, device=self.device)
-        )
+        print(f"[EXPLAIN] 步骤3: 调用 GNNExplainer (这可能需要较长时间，epochs=200)...")
+        explainer_start = time.time()
+        try:
+            explanation = self.explainer(
+                x=data.x,
+                edge_index=data.edge_index,
+                batch=torch.zeros(data.x.size(0), dtype=torch.long, device=self.device)
+            )
+            explainer_time = time.time() - explainer_start
+            print(f"[EXPLAIN] GNNExplainer 完成，耗时: {explainer_time:.2f} 秒")
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"[EXPLAIN] GNNExplainer 失败: {str(e)}")
+            print(f"[EXPLAIN] Traceback: {error_trace}")
+            raise
         
         # 获取节点数量
-        num_nodes = data.x.size(0)
+        print(f"[EXPLAIN] 步骤4: 处理节点特征重要性...")
+        node_mask = explanation.node_mask.cpu().detach().numpy()
+        print(f"[EXPLAIN] 节点掩码形状: {node_mask.shape}")
         
         # 创建节点特征重要性DataFrame
         node_feature_importance = []
-        node_mask = explanation.node_mask.cpu().detach().numpy()
+        node_start_time = time.time()
+        total_node_feature_ops = num_nodes * num_features
         
         for node_idx in range(num_nodes):
+            progress_interval = max(1, num_nodes // 10) if num_nodes > 0 else 1
+            if (node_idx + 1) % progress_interval == 0 or node_idx == 0:
+                elapsed = time.time() - node_start_time
+                progress = (node_idx + 1) / num_nodes * 100 if num_nodes > 0 else 0
+                print(f"[EXPLAIN] 节点特征处理进度: {node_idx + 1}/{num_nodes} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒")
+            
             node_importance = {}
             node_importance['Node_ID'] = node_idx
             
@@ -134,16 +185,30 @@ class GCNExplainer:
             
             node_feature_importance.append(node_importance)
         
+        node_time = time.time() - node_start_time
+        print(f"[EXPLAIN] 节点特征重要性处理完成，耗时: {node_time:.2f} 秒")
+        
         # 转换为DataFrame
+        print(f"[EXPLAIN] 步骤5: 转换为 DataFrame...")
         node_importance_df = pd.DataFrame(node_feature_importance)
+        print(f"[EXPLAIN] 节点重要性 DataFrame 形状: {node_importance_df.shape}")
         
         # 处理边的重要性
+        print(f"[EXPLAIN] 步骤6: 处理边的重要性...")
         edge_mask = explanation.edge_mask.cpu().detach().numpy()
         edge_importance_matrix = np.zeros((num_nodes, num_nodes))
         
         # 将边的重要性转换为邻接矩阵格式
         edge_index = data.edge_index.cpu().numpy()
+        edge_start_time = time.time()
+        
         for i, (src, dst) in enumerate(edge_index.T):
+            progress_interval = max(1, num_edges // 10) if num_edges > 0 else 1
+            if (i + 1) % progress_interval == 0 or i == 0:
+                elapsed = time.time() - edge_start_time
+                progress = (i + 1) / num_edges * 100 if num_edges > 0 else 0
+                print(f"[EXPLAIN] 边重要性处理进度: {i + 1}/{num_edges} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒")
+            
             # 复制原始数据
             perturbed_data = data.clone()
             
@@ -161,6 +226,13 @@ class GCNExplainer:
             # 保存到邻接矩阵（保持对称性）
             edge_importance_matrix[src][dst] = importance
             edge_importance_matrix[dst][src] = importance
+        
+        edge_time = time.time() - edge_start_time
+        print(f"[EXPLAIN] 边重要性处理完成，耗时: {edge_time:.2f} 秒")
+        
+        total_time = time.time() - start_time
+        print(f"[EXPLAIN] 解释过程全部完成！总耗时: {total_time:.2f} 秒")
+        print(f"[EXPLAIN] 时间分解: Explainer={explainer_time:.2f}s, 节点特征={node_time:.2f}s, 边={edge_time:.2f}s")
         
         return node_importance_df, edge_importance_matrix, original_prediction
 
@@ -322,15 +394,37 @@ def predict():
                         print(f"Warning: Could not determine energy path for explainer: {str(e)}")
                         raise Exception(f"Cannot create explainer: energy file path not available. {str(e)}")
                 
-                print(f"Creating explainer with energy_path: {energy_path_for_explainer}")
+                print(f"[PREDICT] 创建解释器，energy_path: {energy_path_for_explainer}")
+                print(f"[PREDICT] 节点数据: {len(node_data)} 行, 邻接矩阵: {len(adj_matrix)}x{len(adj_matrix[0]) if adj_matrix else 0}")
                 
                 # 创建解释器实例（需要文件路径，不是列表）
-                explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_path_for_explainer)
+                explainer_start = time.time()
+                try:
+                    explainer = GCNExplainer(MODEL_PATH, node_data, adj_matrix, energy_path_for_explainer)
+                    explainer_init_time = time.time() - explainer_start
+                    print(f"[PREDICT] 解释器创建成功，耗时: {explainer_init_time:.2f} 秒")
+                except Exception as e:
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    print(f"[PREDICT] 解释器创建失败: {str(e)}")
+                    print(f"[PREDICT] Traceback: {error_trace}")
+                    raise
                 
                 # 获取解释结果
-                print("Starting explanation process...")
-                node_importance, edge_matrix, _ = explainer.explain_and_save(feature_names=feature_names)
-                print("Explanation completed successfully")
+                print("[PREDICT] 开始解释过程...")
+                explain_start = time.time()
+                try:
+                    node_importance, edge_matrix, _ = explainer.explain_and_save(feature_names=feature_names)
+                    explain_time = time.time() - explain_start
+                    print(f"[PREDICT] 解释完成，耗时: {explain_time:.2f} 秒")
+                except Exception as e:
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    explain_time = time.time() - explain_start
+                    print(f"[PREDICT] 解释过程失败，已耗时: {explain_time:.2f} 秒")
+                    print(f"[PREDICT] 错误: {str(e)}")
+                    print(f"[PREDICT] Traceback: {error_trace}")
+                    raise
                 
                 # 添加到结果中
                 result['explanation'] = {
