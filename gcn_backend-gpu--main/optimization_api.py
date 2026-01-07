@@ -629,29 +629,14 @@ import threading
 
 app = Flask(__name__)
 
-# 配置 CORS - 允许所有来源
+# 配置 CORS - 允许所有来源（flask-cors 会自动处理所有 CORS 头）
 CORS(app, 
      origins="*",
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"],
-     supports_credentials=False)
-
-# 确保所有响应都包含 CORS 头
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    return response
-
-# 处理 OPTIONS 预检请求
-@app.route('/optimize', methods=['OPTIONS'])
-def handle_options():
-    response = jsonify({})
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    return response
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     supports_credentials=False,
+     expose_headers=None,
+     max_age=None)
 
 
 @app.route('/optimize', methods=['POST'])
