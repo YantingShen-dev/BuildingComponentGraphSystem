@@ -633,11 +633,16 @@ app = Flask(__name__)
 CORS(app, 
      origins="*",
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
      supports_credentials=False,
      expose_headers=None,
-     max_age=None)
+     max_age=3600)
 
+# 显式处理 OPTIONS 预检请求
+@app.route('/optimize', methods=['OPTIONS'])
+def optimize_options():
+    """处理 OPTIONS 预检请求"""
+    return '', 200
 
 @app.route('/optimize', methods=['POST'])
 def optimize():
