@@ -55,7 +55,7 @@ class GCNExplainer:
         # 初始化GNNExplainer
         self.explainer = Explainer(
             model=self.model,
-            algorithm=GNNExplainer(epochs=200),
+            algorithm=GNNExplainer(epochs=10),
             explanation_type='model',
             edge_mask_type='object',
             node_mask_type='object',

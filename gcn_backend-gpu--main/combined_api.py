@@ -61,7 +61,7 @@ class GCNExplainer:
         # 初始化GNNExplainer（减少epochs以提高性能）
         self.explainer = Explainer(
             model=self.model,
-            algorithm=GNNExplainer(epochs=50),  # 从200减少到50，提高速度
+            algorithm=GNNExplainer(epochs=200),  # 从200减少到50，提高速度
             explanation_type='model',
             edge_mask_type='object',
             node_mask_type='object',
