@@ -4322,7 +4322,8 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
       };
 
       // 发送POST请求到本地端口5000
-      fetch('http://localhost:5001/optimize', {
+      const API_URL_OPT = import.meta.env.VITE_API_URL_OPT || import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      fetch(`${API_URL_OPT}/optimize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

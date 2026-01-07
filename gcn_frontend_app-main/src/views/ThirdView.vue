@@ -3344,7 +3344,8 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
       };
 
       // 发送POST请求到本地端口5000
-      fetch('http://localhost:5000/api/predict', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      fetch(`${API_URL}/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
