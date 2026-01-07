@@ -266,15 +266,20 @@ def predict():
         MODEL_PATH = "model/energy_merged_EUIGCN9.pth"
         
         # 如果需要能源数据但未提供
+        # 在 combined_api.py 第269-278行，修改为：
         if energy_data is None:
             # 使用默认数据文件夹中的能源数据
             try:
                 data_dir = os.path.join("input", "0")
                 _, _, energy_path = read_data_from_dir(data_dir)
-                energy_data = energy_path
+                # 读取文件内容而不是传递路径
+                if os.path.exists(energy_path):
+                    energy_data = pd.read_excel(energy_path, header=None).values.tolist()
+                else:
+                    print(f"Warning: Energy file not found at {energy_path}")
+                    energy_data = None
             except Exception as e:
                 print(f"Warning: Could not load default energy data: {str(e)}")
-                # 如果无法加载默认数据，使用 None（construct_graph_data 可以处理）
                 energy_data = None
         
         # 进行预测
