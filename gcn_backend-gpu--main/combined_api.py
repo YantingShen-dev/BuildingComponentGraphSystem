@@ -231,18 +231,34 @@ class GCNExplainer:
         node_feature_importance = []
         node_start_time = time.time()
         total_node_feature_ops = num_nodes * num_features
+        processed_ops = 0
+        
+        print(f"[EXPLAIN] 开始处理节点特征重要性，共 {num_nodes} 个节点 × {num_features} 个特征 = {total_node_feature_ops} 次扰动计算")
         
         for node_idx in range(num_nodes):
-            progress_interval = max(1, num_nodes // 10) if num_nodes > 0 else 1
-            if (node_idx + 1) % progress_interval == 0 or node_idx == 0:
+            # 每处理一个节点就显示进度
+            if node_idx > 0:
                 elapsed = time.time() - node_start_time
-                progress = (node_idx + 1) / num_nodes * 100 if num_nodes > 0 else 0
-                print(f"[EXPLAIN] 节点特征处理进度: {node_idx + 1}/{num_nodes} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒")
+                progress = (node_idx) / num_nodes * 100 if num_nodes > 0 else 0
+                avg_time_per_node = elapsed / node_idx if node_idx > 0 else 0
+                remaining_nodes = num_nodes - node_idx
+                estimated_remaining = avg_time_per_node * remaining_nodes
+                print(f"[EXPLAIN] 节点处理进度: {node_idx}/{num_nodes} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒, 预计剩余: {estimated_remaining:.1f} 秒")
             
             node_importance = {}
             node_importance['Node_ID'] = node_idx
             
+            # 显示当前处理的节点
+            print(f"[EXPLAIN] 正在处理节点 {node_idx + 1}/{num_nodes}，特征数量: {num_features}")
+            
             for feat_idx, feat_name in enumerate(feature_names):
+                processed_ops += 1
+                
+                # 每处理10个特征显示一次进度（如果特征很多）
+                if num_features > 20 and (feat_idx + 1) % 10 == 0:
+                    feat_progress = (feat_idx + 1) / num_features * 100
+                    print(f"[EXPLAIN]   节点 {node_idx + 1} 特征进度: {feat_idx + 1}/{num_features} ({feat_progress:.1f}%)")
+                
                 # 计算特征的原始值
                 original_value = data.x[node_idx, feat_idx].item()
                 
@@ -270,6 +286,7 @@ class GCNExplainer:
                 node_importance[feat_name] = importance
             
             node_feature_importance.append(node_importance)
+            print(f"[EXPLAIN] 节点 {node_idx + 1} 处理完成")
         
         node_time = time.time() - node_start_time
         print(f"[EXPLAIN] 节点特征重要性处理完成，耗时: {node_time:.2f} 秒")
@@ -288,12 +305,30 @@ class GCNExplainer:
         edge_index = data.edge_index.cpu().numpy()
         edge_start_time = time.time()
         
+        print(f"[EXPLAIN] 开始处理边重要性，共 {num_edges} 条边")
+        
         for i, (src, dst) in enumerate(edge_index.T):
-            progress_interval = max(1, num_edges // 10) if num_edges > 0 else 1
-            if (i + 1) % progress_interval == 0 or i == 0:
-                elapsed = time.time() - edge_start_time
-                progress = (i + 1) / num_edges * 100 if num_edges > 0 else 0
-                print(f"[EXPLAIN] 边重要性处理进度: {i + 1}/{num_edges} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒")
+            # 每处理一条边就显示进度（如果边数不多），或者每10%显示一次（如果边数很多）
+            if num_edges <= 50:
+                # 边数少，每条边都显示
+                if i > 0:
+                    elapsed = time.time() - edge_start_time
+                    progress = i / num_edges * 100 if num_edges > 0 else 0
+                    avg_time_per_edge = elapsed / i if i > 0 else 0
+                    remaining_edges = num_edges - i
+                    estimated_remaining = avg_time_per_edge * remaining_edges
+                    print(f"[EXPLAIN] 边处理进度: {i}/{num_edges} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒, 预计剩余: {estimated_remaining:.1f} 秒")
+                print(f"[EXPLAIN] 正在处理边 {i + 1}/{num_edges}: ({src} -> {dst})")
+            else:
+                # 边数多，每10%显示一次
+                progress_interval = max(1, num_edges // 10) if num_edges > 0 else 1
+                if (i + 1) % progress_interval == 0 or i == 0:
+                    elapsed = time.time() - edge_start_time
+                    progress = (i + 1) / num_edges * 100 if num_edges > 0 else 0
+                    avg_time_per_edge = elapsed / (i + 1) if i > 0 else 0
+                    remaining_edges = num_edges - (i + 1)
+                    estimated_remaining = avg_time_per_edge * remaining_edges
+                    print(f"[EXPLAIN] 边处理进度: {i + 1}/{num_edges} ({progress:.1f}%), 已耗时: {elapsed:.2f} 秒, 预计剩余: {estimated_remaining:.1f} 秒")
             
             # 复制原始数据
             perturbed_data = data.clone()
@@ -312,6 +347,10 @@ class GCNExplainer:
             # 保存到邻接矩阵（保持对称性）
             edge_importance_matrix[src][dst] = importance
             edge_importance_matrix[dst][src] = importance
+            
+            # 如果边数少，显示每条边的处理结果
+            if num_edges <= 50:
+                print(f"[EXPLAIN]   边 ({src} -> {dst}) 处理完成，重要性: {importance:.6f}")
         
         edge_time = time.time() - edge_start_time
         print(f"[EXPLAIN] 边重要性处理完成，耗时: {edge_time:.2f} 秒")
