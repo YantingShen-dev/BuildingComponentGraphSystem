@@ -629,32 +629,26 @@ import threading
 
 app = Flask(__name__)
 
-# 配置 CORS - 允许所有来源（flask-cors 会自动处理所有 CORS 头）
+# 允许所有来源（生产环境可以限制为特定域名）
 CORS(app, 
-     origins="*",
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-     supports_credentials=False,
-     expose_headers=None,
-     max_age=3600)
+     resources={
+         r"/*": {
+             "origins": "*",
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"]
+         }
+     },
+     supports_credentials=True)
 
-# 添加 after_request 钩子，确保所有响应都包含 CORS 头
-@app.after_request
-def after_request(response):
-    """为所有响应添加 CORS 头"""
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin")
-    response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    response.headers.add("Access-Control-Max-Age", "3600")
-    return response
-
-# 显式添加 OPTIONS 路由（必须在 POST 路由之前注册）
-@app.route('/optimize', methods=['OPTIONS'])
-def optimize_options():
-    """处理 OPTIONS 预检请求"""
-    response = make_response()
-    response.status_code = 200
-    return response
+# 处理 OPTIONS 预检请求
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        return response
 
 @app.route('/optimize', methods=['POST'])
 def optimize():
