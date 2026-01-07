@@ -622,7 +622,7 @@ def NSGAII_optimization(model_path, node_data, adj_matrix, energy_data, wall_typ
     
     return decoded_solutions
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, make_response
 from flask_cors import CORS
 import json
 import threading
@@ -638,17 +638,23 @@ CORS(app,
      expose_headers=None,
      max_age=3600)
 
-# 显式处理 OPTIONS 预检请求（确保在所有路由之前处理）
-@app.before_request
-def handle_preflight():
+# 添加 after_request 钩子，确保所有响应都包含 CORS 头
+@app.after_request
+def after_request(response):
+    """为所有响应添加 CORS 头"""
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.add("Access-Control-Max-Age", "3600")
+    return response
+
+# 显式添加 OPTIONS 路由（必须在 POST 路由之前注册）
+@app.route('/optimize', methods=['OPTIONS'])
+def optimize_options():
     """处理 OPTIONS 预检请求"""
-    if request.method == "OPTIONS":
-        response = jsonify({})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        response.headers.add("Access-Control-Max-Age", "3600")
-        return response
+    response = make_response()
+    response.status_code = 200
+    return response
 
 @app.route('/optimize', methods=['POST'])
 def optimize():
