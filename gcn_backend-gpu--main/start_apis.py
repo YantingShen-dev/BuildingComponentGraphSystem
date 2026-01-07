@@ -127,8 +127,42 @@ if __name__ == "__main__":
         
         # 导入 combined_api 并获取 app 对象
         import combined_api
-        # 直接运行 Flask 应用
-        combined_api.app.run(host='0.0.0.0', port=port, debug=False)
+        
+        # 在 Railway 上使用 gunicorn 作为生产服务器
+        # gunicorn 更适合生产环境，支持更长的请求超时
+        try:
+            import gunicorn.app.base
+            
+            class StandaloneApplication(gunicorn.app.base.BaseApplication):
+                def __init__(self, app, options=None):
+                    self.options = options or {}
+                    self.application = app
+                    super().__init__()
+                
+                def load_config(self):
+                    for key, value in self.options.items():
+                        self.cfg.set(key.lower(), value)
+                
+                def load(self):
+                    return self.application
+            
+            # 配置 gunicorn
+            options = {
+                'bind': f'0.0.0.0:{port}',
+                'workers': 1,  # Railway 资源有限，使用单 worker
+                'worker_class': 'sync',
+                'timeout': 300,  # 5分钟超时，足够解释过程完成
+                'keepalive': 5,
+                'accesslog': '-',  # 输出到 stdout
+                'errorlog': '-',  # 输出到 stderr
+            }
+            
+            print("使用 Gunicorn 生产服务器启动...")
+            StandaloneApplication(combined_api.app, options).run()
+        except ImportError:
+            # 如果没有 gunicorn，回退到 Flask 开发服务器
+            print("警告: 未安装 gunicorn，使用 Flask 开发服务器（不推荐生产环境）")
+            combined_api.app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     else:
         # 本地环境：启动两个服务
         # 注册信号处理器

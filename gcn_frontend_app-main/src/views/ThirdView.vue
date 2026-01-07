@@ -3346,14 +3346,21 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
 
       // 发送POST请求到本地端口5000
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      // 创建 AbortController 用于超时控制（5分钟超时）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5分钟
+      
       fetch(`${API_URL}/predict`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(jsonData)
+        body: JSON.stringify(jsonData),
+        signal: controller.signal
       })
       .then(response => {
+        clearTimeout(timeoutId); // 清除超时
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -3369,8 +3376,13 @@ const sendJsonToLocalServer = (): Promise<{success: boolean, message: string, da
         });
       })
       .catch(error => {
+        clearTimeout(timeoutId); // 清除超时
         console.error('发送JSON数据到本地服务器失败:', error);
-        resolve({ success: false, message: error.message });
+        let errorMessage = error.message;
+        if (error.name === 'AbortError') {
+          errorMessage = '请求超时（5分钟）。解释过程可能需要较长时间，请稍后重试。';
+        }
+        resolve({ success: false, message: errorMessage });
       });
 
     } catch (error: any) {
