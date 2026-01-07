@@ -58,10 +58,10 @@ class GCNExplainer:
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         self.model.eval()
         
-        # 初始化GNNExplainer
+        # 初始化GNNExplainer（减少epochs以提高性能）
         self.explainer = Explainer(
             model=self.model,
-            algorithm=GNNExplainer(epochs=200),
+            algorithm=GNNExplainer(epochs=50),  # 从200减少到50，提高速度
             explanation_type='model',
             edge_mask_type='object',
             node_mask_type='object',
@@ -109,31 +109,28 @@ class GCNExplainer:
                 # 计算特征的原始值
                 original_value = data.x[node_idx, feat_idx].item()
                 
-                # 多次不同大小的扰动
-                perturbation_scales = [0.05, 0.1, 0.15, 0.2]  # 不同的扰动比例
-                importance_list = []
+                # 简化扰动分析（减少计算量）
+                # 只使用一个中等大小的扰动，而不是多个
+                perturbation_scale = 0.1  # 只使用一个扰动比例
                 
-                for scale in perturbation_scales:
-                    # 正向扰动
-                    perturbed_data = data.clone()
-                    epsilon = scale * abs(original_value) if original_value != 0 else scale
-                    perturbed_data.x[node_idx, feat_idx] += epsilon
-                    pos_prediction = self._get_prediction(perturbed_data)
-                    pos_impact = (pos_prediction - original_prediction) / epsilon
-                    
-                    # 负向扰动
-                    perturbed_data = data.clone()
-                    perturbed_data.x[node_idx, feat_idx] -= epsilon
-                    neg_prediction = self._get_prediction(perturbed_data)
-                    neg_impact = (original_prediction - neg_prediction) / epsilon
-                    
-                    # 取平均影响
-                    avg_impact = (pos_impact + neg_impact) / 2
-                    importance = avg_impact * node_mask[node_idx][0] * original_value
-                    importance_list.append(importance)
+                # 正向扰动
+                perturbed_data = data.clone()
+                epsilon = perturbation_scale * abs(original_value) if original_value != 0 else perturbation_scale
+                perturbed_data.x[node_idx, feat_idx] += epsilon
+                pos_prediction = self._get_prediction(perturbed_data)
+                pos_impact = (pos_prediction - original_prediction) / epsilon if epsilon != 0 else 0
                 
-                # 取所有扰动结果的平均值
-                node_importance[feat_name] = np.mean(importance_list)
+                # 负向扰动
+                perturbed_data = data.clone()
+                perturbed_data.x[node_idx, feat_idx] -= epsilon
+                neg_prediction = self._get_prediction(perturbed_data)
+                neg_impact = (original_prediction - neg_prediction) / epsilon if epsilon != 0 else 0
+                
+                # 取平均影响
+                avg_impact = (pos_impact + neg_impact) / 2
+                importance = avg_impact * node_mask[node_idx][0] * original_value
+                
+                node_importance[feat_name] = importance
             
             node_feature_importance.append(node_importance)
         
@@ -260,7 +257,7 @@ def predict():
         node_data = data['node_data']
         adj_matrix = data['adj_matrix']
         energy_data = data.get('energy_data')  # 使用get方法获取可选参数
-        need_explain = data.get('explain', True)  # 默认需要解释
+        need_explain = data.get('explain', False)  # 默认禁用解释（因为计算量大，容易超时）
         
         # 设置模型路径
         MODEL_PATH = "model/energy_merged_EUIGCN9.pth"
@@ -300,7 +297,7 @@ def predict():
         
         result = {'prediction': prediction}
         
-        # 如果需要解释
+        # 如果需要解释（默认禁用，因为计算量太大可能导致超时）
         if need_explain:
             try:
                 # 特征名称定义
