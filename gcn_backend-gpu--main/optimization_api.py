@@ -7,28 +7,21 @@ import os
 from deap import base, creator, tools, algorithms
 import random
 import numpy as np
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, make_response
 from flask_cors import CORS
 import json
 
 # ==========================================
-# 1. Flask 设置与 CORS 修复
+# 1. Flask 设置
 # ==========================================
 
 app = Flask(__name__)
 
-# 修复配置：
-# 1. 允许所有来源 ("*")
-# 2. supports_credentials=False (避免与通配符 * 冲突)
-# 3. 允许常见请求头
-CORS(app, 
-     resources={r"/*": {"origins": "*"}},
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-     supports_credentials=False)
+# 虽然手动处理了，保留这个配置作为双重保险
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # ==========================================
-# 2. 工具函数与核心算法
+# 2. 核心算法函数 (保持不变)
 # ==========================================
 
 def read_excel_to_list(file_path, sheet_name=None):
@@ -112,15 +105,11 @@ def NSGAII_optimization(model_path, node_data, adj_matrix, energy_data, wall_typ
             
             wall_type_node = node_data[i][6]
             if wall_type_node == 1:
-                window_material_id = random.randint(0, WINDOW_TYPE_COUNT - 1)
-                individual.append(window_material_id)
+                individual.append(random.randint(0, WINDOW_TYPE_COUNT - 1))
             elif wall_type_node == 2:
-                door_material_id = random.randint(0, DOOR_TYPE_COUNT - 1)
-                individual.append(door_material_id)
+                individual.append(random.randint(0, DOOR_TYPE_COUNT - 1))
             elif wall_type_node == 3:
-                window_material_id = random.randint(0, WINDOW_TYPE_COUNT - 1)
-                door_material_id = random.randint(0, DOOR_TYPE_COUNT - 1)
-                individual.extend([window_material_id, door_material_id])
+                individual.extend([random.randint(0, WINDOW_TYPE_COUNT - 1), random.randint(0, DOOR_TYPE_COUNT - 1)])
         return individual
     
     def create_component_index_map():
@@ -234,7 +223,7 @@ def NSGAII_optimization(model_path, node_data, adj_matrix, energy_data, wall_typ
                     ind1[start_pos + 2], ind2[start_pos + 2] = ind2[start_pos + 2], ind1[start_pos + 2]
                 
                 wall_type_node = node_data[i][6]
-                if wall_type_node == 1 or wall_type_node == 2:
+                if wall_type_node in [1, 2]:
                     if random.random() < 0.5:
                         ind1[start_pos + 3], ind2[start_pos + 3] = ind2[start_pos + 3], ind1[start_pos + 3]
                 elif wall_type_node == 3:
@@ -400,11 +389,21 @@ def NSGAII_optimization(model_path, node_data, adj_matrix, energy_data, wall_typ
     return decoded_solutions
 
 # ==========================================
-# 3. API 路由
+# 3. API 路由 (关键修复)
 # ==========================================
 
-@app.route('/optimize', methods=['POST'])
+# 重点：显式在 methods 中添加 'OPTIONS'，强制 Flask 处理预检请求
+@app.route('/optimize', methods=['POST', 'OPTIONS'])
 def optimize():
+    # 1. 显式处理 OPTIONS 请求，直接返回 200 和跨域头
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "POST,OPTIONS")
+        return response
+
+    # 2. 处理 POST 业务逻辑
     try:
         data = request.get_json()
         if not all(key in data for key in ['node_data', 'adj_matrix', 'wall_type']):
@@ -446,7 +445,6 @@ def optimize():
                         stream_callback=collect_stream_data
                     )
                     
-                    # 发送缓冲区中的数据
                     for stream_data in stream_buffer:
                         yield f"data: {json.dumps(stream_data)}\n\n"
                     
@@ -471,14 +469,15 @@ def optimize():
                     error_data = {'status': 'error', 'error': str(e)}
                     yield f"data: {json.dumps(error_data)}\n\n"
             
-            # 重要：设置 Access-Control-Allow-Origin 为 *，并禁用缓冲
+            # 流式响应的 CORS 头
             return Response(generate_stream(), 
                           mimetype='text/event-stream',
                           headers={
                               'Cache-Control': 'no-cache',
                               'Connection': 'keep-alive',
                               'Access-Control-Allow-Origin': '*',
-                              'X-Accel-Buffering': 'no'  # 关键修复：防止 Nginx/Railway 缓冲 SSE
+                              'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                              'X-Accel-Buffering': 'no'
                           })
         
         else:
