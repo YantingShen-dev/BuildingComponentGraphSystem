@@ -1095,7 +1095,7 @@ const handleBackButton = () => {
 // 加载墙体材料数据
 const loadWallMaterials = async () => {
   try {
-    const response = await fetch('/data/wall_select.xlsx');
+    const response = await fetch('/materials/wall_select.xlsx');
     const arrayBuffer = await response.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
