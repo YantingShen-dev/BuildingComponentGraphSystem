@@ -1108,9 +1108,22 @@ const loadWallMaterials = async () => {
     console.error('加载墙体材料数据失败:', error);
     // 如果加载失败，使用默认数据
     wallMaterials.value = [
-      { Material: '混凝土', MaterialEN: 'Concrete', Con: 1.74, Price: 100 },
-      { Material: '砖墙', MaterialEN: 'Brick Wall', Con: 0.81, Price: 80 },
-      { Material: '钢结构', MaterialEN: 'Steel Structure', Con: 50, Price: 200 }
+      { Material: '钢筋混凝土', MaterialEN: 'Reinforced Concrete', Con: 1.74, Price: 178 },
+      { Material: '粘土多孔砖 KP1-190/240', MaterialEN: 'Clay Perforated Brick KP1-190/240', Con: 0.58, Price: 100 },
+      { Material: '炉渣砖240', MaterialEN: 'Slag Brick 240', Con: 0.81, Price: 100 },
+      { Material: '混凝土多孔砖 (240×115×90)', MaterialEN: 'Concrete Perforated Brick (240×115×90)', Con: 0.8, Price: 150 },
+      { Material: 'ALC加气混凝土砌块', MaterialEN: 'ALC Aerated Concrete Block', Con: 0.2, Price: 185 },
+      { Material: '粉煤灰加气混凝土砌块', MaterialEN: 'Fly Ash Aerated Concrete Block', Con: 0.22, Price: 195 },
+      { Material: '挤塑聚苯板(XPS)(毛面)', MaterialEN: 'Extruded Polystyrene Board (XPS) (Rough-Faced)', Con: 0.032, Price: 170 },
+      { Material: '模塑聚苯板(EPS)', MaterialEN: 'Expanded Polystyrene Board (EPS)', Con: 0.039, Price: 200 },
+      { Material: '岩棉板', MaterialEN: 'Rock Wool Board', Con: 0.04, Price: 3000 },
+      { Material: '玻璃棉', MaterialEN: 'Glass Wool', Con: 0.037, Price: 100 },
+      { Material: '聚氨酯(外墙外保温)', MaterialEN: 'Polyurethane (For External Wall Insulation)', Con: 0.024, Price: 19.8 },
+      { Material: '石墨聚苯板', MaterialEN: 'Graphite Polystyrene Board', Con: 0.033, Price: 185 },
+      { Material: '粉煤灰陶粒混凝土1500', MaterialEN: 'Fly Ash Ceramsite Concrete 1500', Con: 0.7, Price: 350 },
+      { Material: '粘土陶粒混凝土1400', MaterialEN: 'Clay Ceramsite Concrete 1400', Con: 0.7, Price: 1400 },
+      { Material: '泡沫混凝土(ρ=700)', MaterialEN: 'Foamed Concrete (ρ=700)', Con: 0.22, Price: 75 },
+      { Material: '结构钢材', MaterialEN: 'Structural Steel', Con: 58.2, Price: 3395 }
     ];
   }
 };
