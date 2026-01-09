@@ -6,7 +6,8 @@
 
 An intelligent web application for **component-based building energy prediction and optimization** using Graph Attention Networks (GAT). This system provides interactive 3D modeling, real-time energy consumption prediction, interpretability analysis, and multi-objective optimization for building design.
 
-📄 **Research Paper**: [Building Energy Modeling with Graph Attention Networks: A Component-Level Interpretable Approach](https://www.sciencedirect.com/science/article/abs/pii/S0378778825013143)
+📄 **Research Paper**: [Building Energy Modeling with Graph Attention Networks: A Component-Level Interpretable Approach](https://www.sciencedirect.com/science/article/abs/pii/S0378778825013143)  
+💻 **Web App**: [click here](https://bcgs.vercel.app/)  
 
 ## 🌟 Features
 
