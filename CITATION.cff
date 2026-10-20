@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use the BCGS toolkit or its pretrained model, please cite the ENB paper below."
+type: software
+title: Building Component Graph System (BCGS)
+version: 0.2.0
+license: MIT
+authors:
+  - family-names: Shen
+    given-names: Yanting
+repository-code: "https://github.com/YantingShen-dev/BuildingComponentGraphSystem"
+preferred-citation:
+  type: article
+  title: "Building energy modeling with replaceable components using graph attention networks"
+  authors:
+    - family-names: Shen
+      given-names: Yanting
+    - family-names: Zhu
+      given-names: Junlin
+    - family-names: Zhang
+      given-names: Qibo
+    - family-names: Huang
+      given-names: Chenyu
+    - family-names: Ye
+      given-names: Jiahong
+    - family-names: Yao
+      given-names: Jiawei
+  journal: Energy and Buildings
+  volume: "349"
+  start: "116584"
+  year: 2025
+  doi: 10.1016/j.enbuild.2025.116584
+  url: "https://doi.org/10.1016/j.enbuild.2025.116584"

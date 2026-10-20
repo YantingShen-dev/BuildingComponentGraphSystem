@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cd gcn_frontend_app-main && npm install && npm run build",
-  "outputDirectory": "gcn_frontend_app-main/dist",
-  "devCommand": "cd gcn_frontend_app-main && npm run dev",
-  "installCommand": "cd gcn_frontend_app-main && npm install",
+  "buildCommand": "cd web/frontend && npm run build",
+  "outputDirectory": "web/frontend/dist",
+  "devCommand": "cd web/frontend && npm run dev",
+  "installCommand": "cd web/frontend && npm ci",
   "framework": "vite",
   "rewrites": [
     {
@@ -30,4 +30,3 @@
     }
   ]
 }
-

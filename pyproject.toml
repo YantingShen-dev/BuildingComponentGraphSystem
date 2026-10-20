@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bcgs"
+version = "0.2.0"
+description = "Building component graphs, energy prediction, explanations, and material optimization."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Yanting Shen"}]
+dependencies = [
+  "torch>=2.5,<3",
+  "torch-geometric>=2.6,<3",
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "openpyxl>=3.1,<4",
+]
+
+[project.optional-dependencies]
+optimize = ["deap>=1.4,<2"]
+web = ["flask>=3,<4", "flask-cors>=4,<7", "deap>=1.4,<2"]
+dev = ["build>=1,<2"]
+
+[project.scripts]
+bcgs = "bcgs.cli:main"
+
+[project.urls]
+Repository = "https://github.com/YantingShen-dev/BuildingComponentGraphSystem"
+Paper = "https://doi.org/10.1016/j.enbuild.2025.116584"
+Issues = "https://github.com/YantingShen-dev/BuildingComponentGraphSystem/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bcgs = ["assets/*.json", "assets/*.pth", "assets/materials/*.xlsx"]

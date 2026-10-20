@@ -95,3 +95,13 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
+# Small, intentional runtime assets are part of the distributable package.
+!src/bcgs/assets/*.pth
+!src/bcgs/assets/materials/*.xlsx
+
+# Local validation and package artifacts
+.validation/
+wheelhouse/
+.wheel-test/
+.npm-cache/
+
