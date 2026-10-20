@@ -1,0 +1,86 @@
+BCGS Non-Commercial Research License
+Version 1.0
+
+Copyright (c) 2025-2026 Yanting Shen. All rights reserved except as expressly
+granted below.
+
+1. Scope
+
+"Materials" means the BCGS code, pretrained model weights, example data,
+documentation, and project-authored media distributed with this license,
+to the extent that the copyright holder has the right to license them.
+Third-party materials with separate notices or licenses, and figures from
+published papers, retain their own terms and are not relicensed here.
+
+2. Permission for non-commercial research
+
+Subject to these terms, you may use, reproduce, study, modify, and distribute
+the Materials and your modifications solely for non-commercial research,
+including scientific evaluation, reproduction of published results, and
+academic research. You may publish and share the resulting non-commercial
+research findings, with appropriate acknowledgment of BCGS.
+
+"Non-commercial research" means research that is not directed toward
+commercial advantage, monetary compensation, or developing or improving a
+commercial product, service, or business operation. Calling an activity
+"research", making its results public, or not charging the end user does
+not by itself make that activity non-commercial.
+
+3. Commercial use is prohibited
+
+This license does not permit commercial use of the Materials or modified
+versions. Prohibited uses include:
+
+- incorporating them into commercial products, services, or hosted APIs;
+- selling, licensing for a fee, or monetizing access to them;
+- using them for paid consulting, commercial building design or analysis,
+  or other services performed for clients;
+- using them in internal business operations or research and development
+  directed toward commercial advantage.
+
+These restrictions apply whether the Materials are used directly, modified,
+embedded in another system, or made available through a service.
+
+4. Sharing, modifications, and acknowledgment
+
+When sharing the Materials or modified versions, you must retain this
+license and the applicable copyright and attribution notices, identify
+your modifications, and provide the BCGS repository address:
+https://github.com/YantingShen-dev/BuildingComponentGraphSystem
+
+Redistribution must be without charge and under this same license for the
+Materials and modifications to them. You may not grant commercial rights
+to them or remove the non-commercial research restriction. This provision
+does not change the licenses of independently licensed third-party works.
+
+Research publications using BCGS must acknowledge the project and cite the
+relevant method paper identified in CITATION.cff. Citation does not grant
+permission for otherwise prohibited use.
+
+5. Other rights and earlier releases
+
+No trademark rights or endorsement rights are granted. Rights not expressly
+granted are reserved. Nothing here restricts rights available under
+applicable law independently of this license.
+
+This license applies to copies distributed with these terms. It does not
+revoke or alter rights already granted for earlier releases under another
+license, including MIT.
+
+6. Termination
+
+The permissions granted by this license terminate automatically if you
+violate its terms. Following termination, you must cease exercising the
+permissions granted here. Termination does not affect recipients who
+received copies in compliance with this license and remain in compliance.
+
+7. No warranty; limitation of liability
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE MATERIALS ARE PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+THE AUTHORS AND COPYRIGHT HOLDERS ARE NOT LIABLE FOR CLAIMS, DAMAGES, OR
+OTHER LIABILITY ARISING FROM THE MATERIALS OR THEIR USE.
+
+This is a custom source-available license for non-commercial research,
+not the MIT License or an OSI-approved open-source license.

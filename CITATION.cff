@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use the BCGS toolkit or its pretrained model, please cite the ENB paper below."
 type: software
 title: Building Component Graph System (BCGS)
-version: 0.2.0
-license: MIT
+version: 0.2.1
+license-url: "https://github.com/YantingShen-dev/BuildingComponentGraphSystem/blob/main/LICENSE"
 authors:
   - family-names: Shen
     given-names: Yanting

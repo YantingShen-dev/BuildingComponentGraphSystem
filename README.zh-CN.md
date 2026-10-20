@@ -9,7 +9,8 @@
   <a href="#对应论文"><img src="docs/assets/button-papers.svg" alt="阅读论文" width="184"></a>
 </p>
 
-<p align="center"><b>Python 3.10+ &nbsp; · &nbsp; CPU 可运行 &nbsp; · &nbsp; 内附模型与样例 &nbsp; · &nbsp; MIT</b><br>
+<p align="center"><b>Python 3.10+ &nbsp; · &nbsp; CPU 可运行 &nbsp; · &nbsp; 内附模型与样例</b><br>
+<a href="LICENSE"><b>仅限非商业研究 · 禁止商业使用</b></a><br>
 <a href="README.md">English</a> &nbsp; / &nbsp; <a href="docs/data-format.md">输入数据格式</a> &nbsp; / &nbsp; <a href="web/README.md">本地启动网页</a></p>
 
 ## 从建筑构件出发，分析能耗
@@ -141,4 +142,12 @@ CAADRIA 多尺度模型以及 AEI、UFUG 工作流属于相关研究，尚未打
 
 CAADRIA 链接跳转至官方会议论文列表，对应编号 #56。
 
-使用本工具的构件图与能耗模型时，请引用 ENB 论文。[BibTeX](README.md#papers-and-citation) · [CITATION.cff](CITATION.cff) · [MIT 许可证](LICENSE)
+使用本工具的构件图与能耗模型时，请引用 ENB 论文。[BibTeX](README.md#papers-and-citation) · [CITATION.cff](CITATION.cff)
+
+## 使用许可
+
+**允许非商业研究使用，禁止商业使用。**
+
+本版本使用自定义的 [BCGS 非商业研究许可](LICENSE)。允许在许可条件下开展研究、复现、修改及免费分享；商业产品、收费服务、商业项目及面向商业利益的研发均不在授权范围内。分享原版或修改版时，须保留许可及署名，并继续遵守非商业研究限制。使用本项目发表研究成果时须引用相应论文。
+
+这是“源码可用、仅限非商业研究”的项目，不属于 OSI 定义的开源许可。第三方依赖和论文图片保留各自的授权条款；新许可不追溯撤销旧版已授予的 MIT 权利。详见[中文授权说明](docs/licensing.zh-CN.md)。

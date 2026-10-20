@@ -9,7 +9,8 @@
   <a href="#papers-and-citation"><img src="docs/assets/button-papers.svg" alt="Read the papers" width="184"></a>
 </p>
 
-<p align="center"><b>Python 3.10+ &nbsp; · &nbsp; CPU inference &nbsp; · &nbsp; Included model &amp; example &nbsp; · &nbsp; MIT</b><br>
+<p align="center"><b>Python 3.10+ &nbsp; · &nbsp; CPU inference &nbsp; · &nbsp; Included model &amp; example</b><br>
+<a href="LICENSE"><b>Non-commercial research only · No commercial use</b></a><br>
 <a href="README.zh-CN.md">中文说明</a> &nbsp; / &nbsp; <a href="docs/data-format.md">Input format</a> &nbsp; / &nbsp; <a href="web/README.md">Run the web app locally</a></p>
 
 ## Building energy, component by component
@@ -178,4 +179,12 @@ For use of the included model, cite the ENB paper:
 
 </details>
 
-[MIT license](LICENSE) · [Citation metadata](CITATION.cff) · [Report an issue](https://github.com/YantingShen-dev/BuildingComponentGraphSystem/issues)
+## License
+
+**Non-commercial research is permitted. Commercial use is prohibited.**
+
+This version is distributed under the custom [BCGS Non-Commercial Research License](LICENSE). You may study, run, modify, and share the project for non-commercial research under its terms. Commercial products, paid services, commercial project work, and business-oriented R&D are not permitted. Redistributed copies and modifications must retain the license and attribution. Cite the relevant paper when publishing research using BCGS.
+
+This is source-available research software, not an OSI-approved open-source license. Third-party dependencies and published paper figures retain their own terms. The change does not revoke rights already granted under MIT for earlier releases. [中文授权说明](docs/licensing.zh-CN.md)
+
+[Research-use license](LICENSE) · [Citation metadata](CITATION.cff) · [Report an issue](https://github.com/YantingShen-dev/BuildingComponentGraphSystem/issues)

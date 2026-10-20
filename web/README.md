@@ -2,6 +2,10 @@
 
 Use the Python toolkit on its own, or add the existing Vue / Three.js editor.
 
+**Non-commercial research only. Commercial use is prohibited.**
+The frontend and API are covered by the [BCGS Non-Commercial Research License](../LICENSE).
+Third-party dependencies retain their own licenses.
+
 ## Local development
 
 From the repository root, in the activated Python environment:
