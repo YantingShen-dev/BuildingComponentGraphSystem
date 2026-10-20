@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+<title id="title">BCGS — Building Component Graph System</title>
+<desc id="desc">An open Python toolkit: model building components, encode their graph, predict energy use and explore material options.</desc>
+<defs>
+ <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#203239" stroke-width=".65"/></pattern>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0d1d23"/><stop offset="1" stop-color="#122e34"/></linearGradient>
+ <linearGradient id="face" x2="1" y2="1"><stop stop-color="#67e4c4" stop-opacity=".2"/><stop offset="1" stop-color="#67e4c4" stop-opacity=".03"/></linearGradient>
+</defs>
+<rect width="1200" height="480" rx="18" fill="url(#bg)"/>
+<rect x="590" width="610" height="480" fill="url(#grid)"/>
+<g font-family="Arial,Helvetica,sans-serif">
+ <rect x="48" y="44" width="7" height="15" rx="2" fill="#7ce6ca"/>
+ <text x="67" y="57" fill="#9cb3b9" font-size="13" letter-spacing="3">OPEN TOOLS FOR BUILDING ENERGY</text>
+ <text x="45" y="165" fill="#f1f7f6" font-size="96" font-weight="700" letter-spacing="-5">BCGS</text>
+ <text x="49" y="207" fill="#b3c9ce" font-size="22">Building Component Graph System</text>
+ <text x="49" y="277" fill="#f1f7f6" font-size="30" font-weight="600">From components</text>
+ <text x="49" y="317" fill="#7ce6ca" font-size="30" font-weight="600">to energy insights.</text>
+ <text x="49" y="359" fill="#a3b9bf" font-size="16">Model. Predict. Explain. Compare.</text>
+ <path d="M49 395H530" stroke="#385159"/>
+ <text x="49" y="430" fill="#b3c9ce" font-size="13" letter-spacing="1">PYTHON API</text>
+ <text x="183" y="430" fill="#b3c9ce" font-size="13" letter-spacing="1">CLI</text>
+ <text x="252" y="430" fill="#b3c9ce" font-size="13" letter-spacing="1">3D WEB INTERFACE</text>
+</g>
+<!-- Exploded building surfaces: roof, walls, floor. Illustrative, not model output. -->
+<g stroke="#7ce6ca" stroke-width="1.6" stroke-linejoin="round">
+ <path d="M660 131L765 70L874 133L769 194Z" fill="url(#face)"/>
+ <path d="M660 196L765 135L765 271L660 332Z" fill="#193b40"/>
+ <path d="M765 135L874 198L874 334L765 271Z" fill="url(#face)"/>
+ <path d="M660 361L765 300L874 363L769 424Z" fill="url(#face)"/>
+ <path d="M660 131V361M874 133V363M769 194V424" stroke-dasharray="3 7" opacity=".35"/>
+ <path d="M684 209L714 191V242L684 260ZM811 190L843 208V252L811 234Z" fill="#55bed4" fill-opacity=".22" stroke="#75cfe0"/>
+</g>
+<g stroke="#4b8990" stroke-width="1.4" fill="none">
+ <path d="M896 253H937M929 246L937 253L929 260"/>
+ <path d="M996 146L1084 195L1110 306L1017 363L965 271Z M996 146L1017 363M965 271L1084 195M1084 195L1017 363M965 271L1110 306"/>
+</g>
+<g fill="#0e262d" stroke="#7ce6ca" stroke-width="3">
+ <circle cx="996" cy="146" r="9"/><circle cx="1084" cy="195" r="12"/>
+ <circle cx="1110" cy="306" r="9"/><circle cx="1017" cy="363" r="10"/>
+ <circle cx="965" cy="271" r="12"/>
+</g>
+<g fill="#73c8de"><circle cx="1027" cy="249" r="6"/><circle cx="1059" cy="295" r="5"/></g>
+<g fill="#a3b9bf" font-family="Arial,Helvetica,sans-serif" font-size="11" letter-spacing="2">
+ <text x="696" y="456">COMPONENTS</text><text x="988" y="412">GRAPH</text>
+</g>
+</svg>
